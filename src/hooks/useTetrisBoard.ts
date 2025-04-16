@@ -23,12 +23,39 @@ export function getRandomBlock(): Block {
   return blockValues[Math.floor(Math.random() * blockValues.length)];
 }
 
+export function hasCollisions(
+  board: BoardShape,
+  currentShape: BlockShape,
+  row: number,
+  column: number
+): boolean {
+  let hasCollision = false;
+  currentShape
+    .filter((shapeRow) => shapeRow.some((isSet) => isSet))
+    .forEach((shapeRow: boolean[], rowIndex: number) => {
+      shapeRow.forEach((isSet: boolean, colIndex: number) => {
+        if (
+          isSet &&
+          (row + rowIndex >= board.length ||
+            column + colIndex >= board[0].length ||
+            column + colIndex < 0 ||
+            board[row + rowIndex][column + colIndex] !== EmptyCell.Empty)
+        ) {
+          hasCollision = true;
+        }
+      });
+    });
+  return hasCollision;
+}
+
 type Action = {
   type: "start" | "drop" | "commit" | "move";
+  newBoard?: BoardShape;
+  newBlock?: Block;
 };
 
 function boardReducer(state: BoardState, action: Action): BoardState {
-  let newState = { ...state };
+  const newState = { ...state };
 
   switch (action.type) {
     case "start":
@@ -44,6 +71,13 @@ function boardReducer(state: BoardState, action: Action): BoardState {
       newState.droppingRow++;
       break;
     case "commit":
+      return {
+        board: action.newBoard || [],
+        droppingRow: 0,
+        droppingColumn: 3,
+        droppingBlock: state.droppingBlock,
+        droppingShape: state.droppingShape,
+      };
     case "move":
     default:
       throw new Error(`Unhandled action type: ${action.type}`);
