@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   getRandomBlock,
   hasCollisions,
@@ -10,6 +10,7 @@ import { Block, BlockShape, BoardShape } from "../types";
 enum TickSpeed {
   Normal = 800,
   Sliding = 100,
+  Fast = 50,
 }
 
 export function useTetris() {
@@ -126,6 +127,81 @@ export function useTetris() {
       droppingColumn
     );
   }
+
+  useEffect(() => {
+    if (!isPlaying) {
+      return;
+    }
+
+    let isPressingLeft = false;
+    let isPressingRight = false;
+    let moveIntervalId: number | undefined;
+
+    const updateMovementInterval = () => {
+      clearInterval(moveIntervalId);
+      dispatchBoardState({
+        type: "move",
+        isPressingLeft,
+        isPressingRight,
+      });
+      moveIntervalId = setInterval(() => {
+        dispatchBoardState({
+          type: "move",
+          isPressingLeft,
+          isPressingRight,
+        });
+      }, 300);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat) {
+        return;
+      }
+
+      if (event.key === "ArrowDown") {
+        setTickSpeed(TickSpeed.Fast);
+      }
+
+      if (event.key === "ArrowUp") {
+        dispatchBoardState({
+          type: "move",
+          isRotating: true,
+        });
+      }
+
+      if (event.key === "ArrowLeft") {
+        isPressingLeft = true;
+      }
+
+      if (event.key === "ArrowRight") {
+        isPressingRight = true;
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key === "ArrowDown") {
+        setTickSpeed(TickSpeed.Normal);
+      }
+
+      if (event.key === "ArrowLeft") {
+        isPressingLeft = false;
+        updateMovementInterval();
+      }
+
+      if (event.key === "ArrowRight") {
+        isPressingRight = false;
+        updateMovementInterval();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keyup", handleKeyUp);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keyup", handleKeyUp);
+      setTickSpeed(TickSpeed.Normal);
+    };
+  }, [isPlaying]);
 
   return {
     board: renderedBoard,

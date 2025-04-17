@@ -48,10 +48,30 @@ export function hasCollisions(
   return hasCollision;
 }
 
+function rotateBlock(shape: BlockShape): BlockShape {
+  const rows = shape.length;
+  const columns = shape[0].length;
+
+  const rotated = Array(rows)
+    .fill(null)
+    .map(() => Array(columns).fill(false));
+
+  for (let row = 0; row < rows; row++) {
+    for (let column = 0; column < columns; column++) {
+      rotated[column][rows - 1 - row] = shape[row][column];
+    }
+  }
+
+  return rotated;
+}
+
 type Action = {
   type: "start" | "drop" | "commit" | "move";
   newBoard?: BoardShape;
   newBlock?: Block;
+  isPressingLeft?: boolean;
+  isPressingRight?: boolean;
+  isRotating?: boolean;
 };
 
 function boardReducer(state: BoardState, action: Action): BoardState {
@@ -79,6 +99,23 @@ function boardReducer(state: BoardState, action: Action): BoardState {
         droppingShape: state.droppingShape,
       };
     case "move":
+      const rotatedShape = action.isRotating
+        ? rotateBlock(newState.droppingShape)
+        : newState.droppingShape;
+      let columnOffset = action.isPressingLeft ? -1 : 0;
+      columnOffset = action.isPressingRight ? 1 : columnOffset;
+      if (
+        !hasCollisions(
+          newState.board,
+          rotatedShape,
+          newState.droppingRow,
+          newState.droppingColumn + columnOffset
+        )
+      ) {
+        newState.droppingColumn += columnOffset;
+        newState.droppingShape = rotatedShape;
+      }
+      break;
     default:
       throw new Error(`Unhandled action type: ${action.type}`);
   }
